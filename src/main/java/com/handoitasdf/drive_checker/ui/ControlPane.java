@@ -48,11 +48,18 @@ public class ControlPane extends JPanel {
         constraints.weighty = 0.0;
         add(button, constraints);
         button.addActionListener(e -> {
+            String path = testFilePathField.getText();
+            if (path.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        parent,
+                        "Please select the test file");
+                return;
+            }
             File testFile = new File(testFilePathField.getText());
             if (!testFile.isFile()) {
                 JOptionPane.showMessageDialog(
                         parent,
-                        "Fail to open file \"" + testFile.getPath() + "\"");
+                        "\"" + testFile.getAbsolutePath() + "\" isn't a file");
                 return;
             }
             listener.onRun(testFile);
