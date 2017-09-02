@@ -7,6 +7,6 @@ import java.io.File;
  * Created by icand on 2017/8/31.
  */
 public interface ControlPaneListener {
-    void onPendingStart(@Nonnull File testFile);
+    void onPendingStart();
     void onPendingStop();
 }

@@ -27,14 +27,15 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     private final List<DriveChecker> driveCheckers = new ArrayList<>();
     private final List<Future> checkerFutures = new ArrayList<>();
     private final File testFile;
+    private final int iterationCount;
     private final ControlPane controlPane;
 
     public DrivesCheckWorker(
             @Nonnull List<DrivePane> drivePanes,
-            @Nonnull File testFile,
             @Nonnull ControlPane controlPane) {
         this.drivePanes = drivePanes;
-        this.testFile = testFile;
+        this.testFile = controlPane.getTestFile();
+        this.iterationCount = controlPane.getIterationCount();
         this.controlPane = controlPane;
         addPropertyChangeListener(event -> {
             String propName = event.getPropertyName();
@@ -128,6 +129,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
         private final DriveChecker driveChecker;
         private final DrivePane drivePane;
+        private int iteration = 0;
 
         public Worker(@Nonnull DriveChecker driveChecker, @Nonnull DrivePane drivePane) {
             this.driveChecker = driveChecker;
@@ -137,8 +139,13 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
         @Override
         public void run() {
             File drive = drivePane.getDrive();
+            iteration = 0;
+            LOGGER.info("Running check for drive {} for {} times", drive.getPath(), iterationCount);
             try {
-                driveChecker.check();
+                while (hasMoreIteration()) {
+                    LOGGER.info("Running iteration {} for drive {}", iteration, drive.getPath());
+                    driveChecker.check();
+                }
                 publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.SUCCESS));
                 LOGGER.info("Drive {} checking passed!", drive.getPath());
             } catch (InterruptedException | CancellationException ex) {
@@ -148,6 +155,13 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
                 publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.FAILED));
                 LOGGER.error("Fail to check drive {}", drive.getPath(), ex);
             }
+        }
+
+        private boolean hasMoreIteration() {
+            if (iterationCount <= 0) {
+                return true;
+            }
+            return iteration++ < iterationCount;
         }
     }
 }

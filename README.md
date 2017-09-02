@@ -1,5 +1,8 @@
 # Drive Checker
 
+## Prepare Environment
+You need to download and install JRE (or JDK).
+
 ## TODO
 - Generate report
 - Add loop

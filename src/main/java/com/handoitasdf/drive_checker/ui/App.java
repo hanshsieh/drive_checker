@@ -52,8 +52,8 @@ public class App {
     private void initControlPane() {
         controlPane.setControlPaneListener(new ControlPaneListener() {
             @Override
-            public void onPendingStart(@Nonnull File testFile) {
-                checkDrives(testFile);
+            public void onPendingStart() {
+                checkDrives();
             }
 
             @Override
@@ -64,7 +64,7 @@ public class App {
         frame.getContentPane().add(controlPane, BorderLayout.PAGE_START);
     }
 
-    private void checkDrives(@Nonnull File testFile) {
+    private void checkDrives() {
         cancelCheckDrives();
         List<DrivePane> drivePanes = drivesPane.getDrives();
 
@@ -84,7 +84,7 @@ public class App {
             return;
         }
 
-        drivesCheckWorker = new DrivesCheckWorker(selectedDrivePanes, testFile, controlPane);
+        drivesCheckWorker = new DrivesCheckWorker(selectedDrivePanes, controlPane);
         drivesCheckWorker.execute();
     }
 
