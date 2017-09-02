@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.concurrent.CancellationException;
 
 /**
  * Created by icand on 2017/8/31.
@@ -26,21 +27,29 @@ public class FileChecker {
     private final MessageDigestProvider digestProvider;
     private MessageDigest digester;
     private byte[] realDigest;
+    private volatile boolean canceled = false;
     public FileChecker(@Nonnull File file, @Nonnull MessageDigestProvider digestProvider) {
         this.file = file;
         this.digestProvider = digestProvider;
     }
 
-    public boolean check(byte[] digest) throws IOException {
+    public boolean check(byte[] digest) throws IOException, InterruptedException, CancellationException {
         try {
             init();
-            while (readChunk()) {
+            do {
+                if (canceled) {
+                    throw new CancellationException("Checking is canceled");
+                }
                 LOGGER.debug("Total bytes: {}, current offset: {}", fileSize, filePosition);
-            }
+            } while (readChunk());
             return Arrays.equals(realDigest, digest);
         } finally {
             release();
         }
+    }
+
+    public void cancel() {
+        canceled = true;
     }
 
     private boolean readChunk() throws IOException {

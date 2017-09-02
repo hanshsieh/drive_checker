@@ -1,6 +1,5 @@
 package com.handoitasdf.drive_checker.ui;
 
-import com.sun.istack.internal.NotNull;
 import sun.awt.shell.ShellFolder;
 
 import javax.annotation.Nonnull;
@@ -8,25 +7,21 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.SwingWorker;
-import javax.swing.filechooser.FileSystemView;
-import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.List;
 
 /**
  * Ref:
  * https://stackoverflow.com/questions/39918487/get-a-specific-version-of-the-icon-of-a-file-in-java
  * https://stackoverflow.com/questions/6714045/how-to-resize-jlabel-imageicon
+ * https://stackoverflow.com/questions/1498506/java-how-to-get-the-thumbnail-from-a-file
  */
 public class DriveLabel extends JLabel {
     private static final int WIDTH = 50;
     private static final int HEIGHT = 50;
     private final File drive;
-    public DriveLabel(@NotNull File drive) {
+    public DriveLabel(@Nonnull File drive) {
         this.drive = drive;
         setText(drive.getPath());
         setHorizontalTextPosition(JLabel.CENTER);
@@ -38,6 +33,8 @@ public class DriveLabel extends JLabel {
         new SwingWorker<Void, Icon>() {
             @Override
             protected Void doInBackground() throws Exception {
+
+                // Notice that ShellFolder class only exists if you are using Sun JDK.
                 Image image = ShellFolder.getShellFolder(drive).getIcon(true);
                 setIcon(new ImageIcon(image.getScaledInstance(WIDTH, HEIGHT, Image.SCALE_SMOOTH)));
                 return null;

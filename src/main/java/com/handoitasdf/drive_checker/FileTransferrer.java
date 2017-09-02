@@ -11,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.CancellationException;
 
 /**
  * Created by icand on 2017/8/30.
@@ -30,6 +31,7 @@ public class FileTransferrer {
     private byte[] buffer;
     private int bufferSize;
     private int bufferOffset;
+    private volatile boolean canceled = false;
     public FileTransferrer(@Nonnull File inputFile,
                            @Nonnull File outputFile,
                            @Nonnull MessageDigestProvider digestProvider) {
@@ -38,18 +40,25 @@ public class FileTransferrer {
         this.digestProvider = digestProvider;
     }
 
-    public void transfer() throws IOException {
+    public void transfer() throws IOException, InterruptedException, CancellationException {
         try {
             initStreams();
 
-            while (transferChunk()) {
+            do {
+                if (canceled) {
+                    throw new CancellationException("Transferring is canceled");
+                }
                 LOGGER.debug("Total number bytes to transferred: {}, number of bytes transferred: {}",
                         inputSize, inputPosition);
-            }
+            } while (transferChunk());
 
         } finally {
             release();
         }
+    }
+
+    public void cancel() {
+        canceled = true;
     }
 
     @Nonnull

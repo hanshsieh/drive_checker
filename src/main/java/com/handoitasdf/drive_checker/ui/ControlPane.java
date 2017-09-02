@@ -1,10 +1,7 @@
 package com.handoitasdf.drive_checker.ui;
 
-import com.handoitasdf.drive_checker.DriveChecker;
-
 import javax.annotation.Nonnull;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -13,18 +10,29 @@ import javax.swing.JTextField;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 
 /**
  * Created by icand on 2017/8/31.
  */
 public class ControlPane extends JPanel {
+
+    public enum Status {
+        RUNNING,
+        STOPPED,
+        PENDING_TO_START,
+        PENDING_TO_STOP
+    }
+
+    private static final String RUNNING_BTN_TEXT = "Stop";
+    private static final String STOPPED_BTN_TEXT = "Run";
     private final JFileChooser fileChooser = new JFileChooser();
     private final JTextField testFilePathField = new JTextField();
+    private final JButton runBtn = new JButton();
+    private final JButton selectFileBtn = new JButton("Open");
     private ControlPaneListener listener;
     private final Component parent;
+    private Status status = Status.STOPPED;
 
     public ControlPane(@Nonnull Component parent) {
         super(new GridBagLayout());
@@ -40,30 +48,71 @@ public class ControlPane extends JPanel {
     }
 
     private void initStartButton() {
-        JButton button = new JButton("Run");
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 3;
         constraints.gridy = 0;
         constraints.weightx = 0.0;
         constraints.weighty = 0.0;
-        add(button, constraints);
-        button.addActionListener(e -> {
-            String path = testFilePathField.getText();
-            if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(
-                        parent,
-                        "Please select the test file");
-                return;
+        add(runBtn, constraints);
+        runBtn.setText(STOPPED_BTN_TEXT);
+        runBtn.addActionListener(e -> {
+            switch (status) {
+                case STOPPED:
+                    pendingToStart();
+                    break;
+                case RUNNING:
+                    pendingToStop();
+                    break;
             }
-            File testFile = new File(testFilePathField.getText());
-            if (!testFile.isFile()) {
-                JOptionPane.showMessageDialog(
-                        parent,
-                        "\"" + testFile.getAbsolutePath() + "\" isn't a file");
-                return;
-            }
-            listener.onRun(testFile);
         });
+    }
+
+    public void start() {
+        runBtn.setText(RUNNING_BTN_TEXT);
+        runBtn.setEnabled(true);
+        status = Status.RUNNING;
+        selectFileBtn.setEnabled(false);
+    }
+
+    public void stop() {
+        runBtn.setText(STOPPED_BTN_TEXT);
+        runBtn.setEnabled(true);
+        status = Status.STOPPED;
+        selectFileBtn.setEnabled(true);
+    }
+
+    private void pendingToStart() {
+        String path = testFilePathField.getText();
+        if (path.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    parent,
+                    "Please select the test file");
+            return;
+        }
+        File testFile = new File(testFilePathField.getText());
+        if (!testFile.isFile()) {
+            JOptionPane.showMessageDialog(
+                    parent,
+                    "\"" + testFile.getAbsolutePath() + "\" isn't a file");
+            return;
+        }
+        runBtn.setText(STOPPED_BTN_TEXT);
+        runBtn.setEnabled(false);
+        selectFileBtn.setEnabled(false);
+        status = Status.PENDING_TO_START;
+        if (listener != null) {
+            listener.onPendingStart(testFile);
+        }
+    }
+
+    private void pendingToStop() {
+        status = Status.PENDING_TO_STOP;
+        runBtn.setText(RUNNING_BTN_TEXT);
+        runBtn.setEnabled(false);
+        selectFileBtn.setEnabled(false);
+        if (listener != null) {
+            listener.onPendingStop();
+        }
     }
 
     private void initTestFileLabel() {
@@ -77,15 +126,14 @@ public class ControlPane extends JPanel {
     }
 
     private void initSelectFileButton() {
-        JButton button = new JButton("Open");
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 2;
         constraints.gridy = 0;
         constraints.weightx = 0.0;
         constraints.weighty = 0.0;
-        add(button, constraints);
+        add(selectFileBtn, constraints);
 
-        button.addActionListener(e -> {
+        selectFileBtn.addActionListener(e -> {
             int state = fileChooser.showOpenDialog(parent);
             if (state != JFileChooser.APPROVE_OPTION) {
                 return;
