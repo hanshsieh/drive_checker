@@ -126,7 +126,7 @@ public class DriveChecker {
      *         false if the checker has already been canceled or is done.
      */
     public synchronized boolean cancel() {
-        if (Status.CANCELED.equals(status) || Status.SUCCESS.equals(status)) {
+        if (!Status.PENDING.equals(status) && !Status.RUNNING.equals(status)) {
             return false;
         }
         status = Status.CANCELED;

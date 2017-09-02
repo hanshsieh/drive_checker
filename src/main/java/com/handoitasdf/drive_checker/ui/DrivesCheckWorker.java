@@ -1,5 +1,6 @@
 package com.handoitasdf.drive_checker.ui;
 
+import com.handoitasdf.drive_checker.CheckingStatus;
 import com.handoitasdf.drive_checker.DriveChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     private final static Logger LOGGER = LoggerFactory.getLogger(DrivesCheckWorker.class);
     private final static long WAIT_TIMEOUT = 1000 * 60;
 
-    private final List<DrivePane> drivePanes;
+    private final List<File> drives;
     private final List<DriveChecker> driveCheckers = new ArrayList<>();
     private final List<Future> checkerFutures = new ArrayList<>();
     private final File testFile;
@@ -37,10 +38,10 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public DrivesCheckWorker(
-            @Nonnull List<DrivePane> drivePanes,
+            @Nonnull List<File> drives,
             @Nonnull File testFile,
             int iterationCount) {
-        this.drivePanes = drivePanes;
+        this.drives = drives;
         this.testFile = testFile;
         this.iterationCount = iterationCount;
         addPropertyChangeListener(event -> {
@@ -86,10 +87,13 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
         }
     }
 
-    private void onWorkerStarted() {
-        for (DrivePane drivePane : drivePanes) {
-            drivePane.setCheckStatus(DrivePane.CheckStatus.RUNNING);
+    private void invokeListenerOnDriveStatusChanged(@Nonnull File drive, @Nonnull CheckingStatus status) {
+        if (listener != null) {
+            listener.onDriveStatusChanged(drive, status);
         }
+    }
+
+    private void onWorkerStarted() {
         startTime = Instant.now();
         invokeListenerOnStart();
     }
@@ -132,8 +136,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
     private synchronized void init() {
         driveCheckers.clear();
-        for (DrivePane drivePane : drivePanes) {
-            File drive = drivePane.getDrive();
+        for (File drive : drives) {
             DriveChecker driveChecker = new DriveChecker(
                     drive,
                     testFile);
@@ -145,14 +148,14 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     protected Void doInBackground() throws Exception {
         try {
             init();
-            for (int i = 0; i < drivePanes.size(); ++i) {
+            for (int i = 0; i < drives.size(); ++i) {
                 synchronized (checkerFutures) {
                     if (isCancelled()) {
                         break;
                     }
-                    DrivePane drivePane = drivePanes.get(i);
+                    File drive = drives.get(i);
                     DriveChecker driveChecker = driveCheckers.get(i);
-                    Future checkerFuture = executor.submit(new Worker(driveChecker, drivePane));
+                    Future checkerFuture = executor.submit(new Worker(driveChecker, drive));
                     checkerFutures.add(checkerFuture);
                 }
             }
@@ -173,26 +176,26 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     private class Worker implements Runnable {
 
         private final DriveChecker driveChecker;
-        private final DrivePane drivePane;
+        private final File drive;
 
-        public Worker(@Nonnull DriveChecker driveChecker, @Nonnull DrivePane drivePane) {
+        public Worker(@Nonnull DriveChecker driveChecker, @Nonnull File drive) {
             this.driveChecker = driveChecker;
-            this.drivePane = drivePane;
+            this.drive = drive;
         }
 
         @Override
         public void run() {
-            File drive = drivePane.getDrive();
+            publish(() -> invokeListenerOnDriveStatusChanged(drive, CheckingStatus.RUNNING));
             LOGGER.info("Running check for drive {} for {} times", drive.getPath(), iterationCount);
             try {
                 driveChecker.check(iterationCount);
-                publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.SUCCESS));
+                publish(() -> invokeListenerOnDriveStatusChanged(drive, CheckingStatus.SUCCESS));
                 LOGGER.info("Drive {} checking passed!", drive.getPath());
             } catch (InterruptedException | CancellationException ex) {
-                publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.CANCELED));
+                publish(() -> invokeListenerOnDriveStatusChanged(drive, CheckingStatus.CANCELED));
                 LOGGER.info("Checking of drive {} is canceled", drive.getPath(), ex);
             } catch (Exception ex) {
-                publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.FAILED));
+                publish(() -> invokeListenerOnDriveStatusChanged(drive, CheckingStatus.FAILED));
                 LOGGER.error("Fail to check drive {}", drive.getPath(), ex);
             }
         }

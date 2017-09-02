@@ -1,5 +1,7 @@
 package com.handoitasdf.drive_checker.ui;
 
+import com.handoitasdf.drive_checker.CheckingStatus;
+
 import javax.annotation.Nonnull;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -15,14 +17,6 @@ import java.io.File;
  * Created by icand on 2017/9/1.
  */
 public class DrivePane extends JPanel {
-
-    public enum CheckStatus {
-        SUCCESS,
-        FAILED,
-        RUNNING,
-        CANCELED,
-        NONE
-    }
 
     // Put an arbitrary character so that the vertical space can be preserved.
     private static final String DEFAULT_STATUS_TEXT = " ";
@@ -74,7 +68,7 @@ public class DrivePane extends JPanel {
         add(statusLabel, constraints);
     }
 
-    public void setCheckStatus(@Nonnull CheckStatus status) {
+    public void setCheckStatus(@Nonnull CheckingStatus status) {
         checkBox.setEnabled(true);
         switch (status) {
             case SUCCESS:
