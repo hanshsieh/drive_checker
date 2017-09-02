@@ -14,13 +14,6 @@ import java.util.concurrent.CancellationException;
  * Created by icand on 2017/8/30.
  */
 public class DriveChecker {
-    public enum Status {
-        PENDING,
-        RUNNING,
-        SUCCESS,
-        CANCELED,
-        FAILED
-    }
     private final Logger LOGGER = LoggerFactory.getLogger(DriveChecker.class);
     private final File drive;
     private final File testFile;
@@ -31,7 +24,7 @@ public class DriveChecker {
     private Instant startTime;
     private Instant doneTime;
     private int currIteration = 0;
-    private volatile Status status = Status.PENDING;
+    private volatile CheckingStatus status = CheckingStatus.PENDING;
     public DriveChecker(@Nonnull File drive, @Nonnull File testFile) {
         this.drive = drive;
         this.testFile = testFile;
@@ -39,16 +32,16 @@ public class DriveChecker {
     }
 
     public void check(int maxIterations) throws IOException, InterruptedException, CancellationException {
-        if (!Status.PENDING.equals(status)) {
+        if (!CheckingStatus.PENDING.equals(status)) {
             throw new IllegalStateException("This current status is " + status
                     + ", and checking cannot be run multiple times");
         }
         try {
-            setStatusUnlessCanceled(Status.RUNNING);
+            setStatusUnlessCanceled(CheckingStatus.RUNNING);
             prepare();
             while (true) {
                 transferrer.transfer();
-                setStatusUnlessCanceled(Status.RUNNING);
+                setStatusUnlessCanceled(CheckingStatus.RUNNING);
                 if (!fileChecker.check(transferrer.getDigest())) {
                     throw new IOException("MD5 digest checking fails");
                 }
@@ -57,17 +50,17 @@ public class DriveChecker {
                     break;
                 }
             }
-            setStatusUnlessCanceled(Status.SUCCESS);
+            setStatusUnlessCanceled(CheckingStatus.SUCCESS);
         } catch (Exception ex) {
-            setStatusUnlessCanceled(Status.FAILED);
+            setStatusUnlessCanceled(CheckingStatus.FAILED);
             throw ex;
         } finally {
             release();
         }
     }
 
-    private synchronized void setStatusUnlessCanceled(@Nonnull Status newStatus) {
-        if (Status.CANCELED.equals(status)) {
+    private synchronized void setStatusUnlessCanceled(@Nonnull CheckingStatus newStatus) {
+        if (CheckingStatus.CANCELED.equals(status)) {
             throw new CancellationException("Checking is canceled");
         }
         this.status = newStatus;
@@ -89,7 +82,7 @@ public class DriveChecker {
     }
 
     @Nonnull
-    public Status getStatus() {
+    public CheckingStatus getStatus() {
         return status;
     }
 
@@ -120,16 +113,16 @@ public class DriveChecker {
     }
 
     /**
-     * Canel the checker.
+     * Cancel the checker.
      *
      * @return True if the cancellation request has been sent;
      *         false if the checker has already been canceled or is done.
      */
     public synchronized boolean cancel() {
-        if (!Status.PENDING.equals(status) && !Status.RUNNING.equals(status)) {
+        if (!CheckingStatus.PENDING.equals(status) && !CheckingStatus.RUNNING.equals(status)) {
             return false;
         }
-        status = Status.CANCELED;
+        status = CheckingStatus.CANCELED;
         if (transferrer != null) {
             transferrer.cancel();
         }

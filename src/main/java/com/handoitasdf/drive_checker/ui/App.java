@@ -74,7 +74,7 @@ public class App {
         List<DrivePane> drivePanes = drivesPane.getDrives();
 
         for (DrivePane drivePane : drivePanes) {
-            drivePane.setCheckStatus(CheckingStatus.NONE);
+            drivePane.setCheckStatus(CheckingStatus.PENDING);
         }
 
         List<File> selectedDrives = drivePanes.stream()
