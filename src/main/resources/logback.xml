@@ -19,7 +19,7 @@
         </encoder>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <maxFileSize>1MB</maxFileSize>
+            <maxFileSize>5MB</maxFileSize>
             <maxHistory>20</maxHistory>
             <totalSizeCap>20MB</totalSizeCap>
             <fileNamePattern>drive_checker.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
@@ -27,7 +27,7 @@
 
     </appender>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </root>
