@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 public class App {
     private static final int DEFAULT_WIDTH = 800;
     private static final int DEFAULT_HEIGHT = 600;
-    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
 
     private final JFrame frame = new JFrame("Drive Checker");
     private final DrivesPane drivesPane = new DrivesPane();
@@ -98,11 +97,13 @@ public class App {
             @Override
             public void onStart() {
                 controlPane.start();
+                drivesPane.setEnabled(false);
             }
 
             @Override
             public void onStop() {
                 controlPane.stop();
+                drivesPane.setEnabled(true);
                 showReportFrame();
             }
 

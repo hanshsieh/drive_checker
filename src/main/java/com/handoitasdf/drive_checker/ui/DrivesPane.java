@@ -1,15 +1,22 @@
 package com.handoitasdf.drive_checker.ui;
 
+import com.handoitasdf.drive_checker.CheckingStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileSystemView;
 import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -20,11 +27,11 @@ public class DrivesPane extends JPanel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DrivesPane.class);
     private final List<DrivePane> drivePanes = new ArrayList<>();
+    private final JPanel drivesPanel = new JPanel();
+    private final JButton refreshBtn = new JButton("Refresh");
 
     public DrivesPane() {
-        FlowLayout layout = new FlowLayout();
-        layout.setAlignment(FlowLayout.LEFT);
-        setLayout(layout);
+        initLayout();
         refresh();
     }
 
@@ -33,8 +40,36 @@ public class DrivesPane extends JPanel {
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                refreshNow();
+                File[] drives = File.listRoots();
+
+                FileSystemView fileSystemView = FileSystemView.getFileSystemView();
+
+                synchronized (drivePanes) {
+                    List<DrivePane> oldDrivePanes = new ArrayList<>(drivePanes);
+                    drivePanes.clear();
+                    for (File drive : drives) {
+                        if (!fileSystemView.isDrive(drive)) {
+                            LOGGER.debug("Root {} isn't drive, skip it", drive);
+                        }
+                        if (!drive.canWrite()) {
+                            LOGGER.debug("Drive {} isn't writable, skip it", drive);
+                            continue;
+                        }
+                        DrivePane drivePane = createDrivePaneIfNotExists(drive, oldDrivePanes);
+                        drivePanes.add(drivePane);
+                    }
+                }
                 return null;
+            }
+
+            @Override
+            protected void done() {
+                drivesPanel.removeAll();
+                for (DrivePane drivePane : drivePanes) {
+                    drivesPanel.add(drivePane);
+                }
+                drivesPanel.revalidate();
+                drivesPanel.repaint();
             }
         }.execute();
 
@@ -45,24 +80,56 @@ public class DrivesPane extends JPanel {
         return Collections.unmodifiableList(drivePanes);
     }
 
-    private synchronized void refreshNow() {
-        File[] drives = File.listRoots();
+    private void initLayout() {
+        setLayout(new GridBagLayout());
+        initControlPane();
+        initDrivesPanel();
+    }
 
-        FileSystemView fileSystemView = FileSystemView.getFileSystemView();
+    private void initControlPane() {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 1;
+        constraints.gridy = 0;
+        constraints.weightx = 0.0;
+        constraints.weighty = 0.0;
+        constraints.anchor = GridBagConstraints.NORTHEAST;
+        add(refreshBtn, constraints);
 
-        drivePanes.clear();
-        removeAll();
-        for(File drive : drives) {
-            if (!fileSystemView.isDrive(drive)) {
-                LOGGER.debug("Root {} isn't drive, skip it", drive);
+        refreshBtn.addActionListener(e -> refresh());
+    }
+
+    private void initDrivesPanel() {
+        FlowLayout layout = new FlowLayout();
+        layout.setAlignment(FlowLayout.LEFT);
+        drivesPanel.setLayout(layout);
+
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = 0;
+        constraints.weightx = 1.0;
+        constraints.weighty = 1.0;
+        constraints.fill = GridBagConstraints.BOTH;
+
+        add(drivesPanel, constraints);
+    }
+
+    @Nonnull
+    private DrivePane createDrivePaneIfNotExists(
+            @Nonnull File drive,
+            @Nonnull Collection<DrivePane> oldDrivePanes) {
+        for (DrivePane oldDrivePane : oldDrivePanes) {
+            if (oldDrivePane.getDrive().equals(drive)) {
+                return oldDrivePane;
             }
-            if (!drive.canWrite()) {
-                LOGGER.debug("Drive {} isn't writable, skip it", drive);
-                continue;
-            }
-            DrivePane drivePane = new DrivePane(drive);
-            add(drivePane);
-            drivePanes.add(drivePane);
         }
+        return new DrivePane(drive);
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        for (DrivePane drivePane : drivePanes) {
+            drivePane.setEnabled(enabled);
+        }
+        refreshBtn.setEnabled(enabled);
     }
 }

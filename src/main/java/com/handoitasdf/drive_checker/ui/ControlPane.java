@@ -129,6 +129,8 @@ public class ControlPane extends JPanel {
         runBtn.setEnabled(true);
         status = Status.RUNNING;
         selectFileBtn.setEnabled(false);
+        testFilePathField.setEnabled(false);
+        testCountSpinner.setEnabled(false);
     }
 
     public void stop() {
@@ -136,6 +138,8 @@ public class ControlPane extends JPanel {
         runBtn.setEnabled(true);
         status = Status.STOPPED;
         selectFileBtn.setEnabled(true);
+        testFilePathField.setEnabled(true);
+        testCountSpinner.setEnabled(true);
     }
 
     public int getIterationCount() {

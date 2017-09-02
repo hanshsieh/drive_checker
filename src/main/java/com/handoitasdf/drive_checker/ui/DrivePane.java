@@ -69,7 +69,6 @@ public class DrivePane extends JPanel {
     }
 
     public void setCheckStatus(@Nonnull CheckingStatus status) {
-        checkBox.setEnabled(true);
         switch (status) {
             case SUCCESS:
                 statusLabel.setText("Success");
@@ -82,7 +81,6 @@ public class DrivePane extends JPanel {
             case RUNNING:
                 statusLabel.setText("Running");
                 statusLabel.setForeground(Color.GRAY);
-                checkBox.setEnabled(false);
                 break;
             case CANCELED:
                 statusLabel.setText("Canceled");
@@ -92,6 +90,11 @@ public class DrivePane extends JPanel {
                 statusLabel.setText(DEFAULT_STATUS_TEXT);
                 break;
         }
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        checkBox.setEnabled(enabled);
     }
 
     public boolean isSelected() {

@@ -91,7 +91,9 @@ public class DriveCheckReportFrame extends JFrame {
                 builder.append("Canceled");
                 break;
             default:
-                builder.append("Failed");
+                builder.append("Failed (Reason: ")
+                        .append(driveChecker.getFailedReason())
+                        .append(')');
                 break;
         }
         builder.append('\n');

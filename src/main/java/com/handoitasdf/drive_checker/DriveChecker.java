@@ -25,6 +25,7 @@ public class DriveChecker {
     private Instant doneTime;
     private int currIteration = 0;
     private volatile CheckingStatus status = CheckingStatus.PENDING;
+    private Exception failedReason;
     public DriveChecker(@Nonnull File drive, @Nonnull File testFile) {
         this.drive = drive;
         this.testFile = testFile;
@@ -53,6 +54,7 @@ public class DriveChecker {
             setStatusUnlessCanceled(CheckingStatus.SUCCESS);
         } catch (Exception ex) {
             setStatusUnlessCanceled(CheckingStatus.FAILED);
+            failedReason = ex;
             throw ex;
         } finally {
             release();
@@ -64,6 +66,11 @@ public class DriveChecker {
             throw new CancellationException("Checking is canceled");
         }
         this.status = newStatus;
+    }
+
+    @Nullable
+    public Exception getFailedReason() {
+        return failedReason;
     }
 
     @Nullable
