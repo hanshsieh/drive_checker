@@ -141,10 +141,6 @@ public class DriveChecker {
 
     @Nonnull
     private File getTargetFile() throws IOException {
-        File target = File.createTempFile(testFile.getName() + ".", ".tmp", drive);
-        if (testFile.equals(target)) {
-            throw new IOException("Input file " + testFile.getPath() + " is the same as target file");
-        }
-        return target;
+        return File.createTempFile(testFile.getName() + ".", ".tmp", drive);
     }
 }
