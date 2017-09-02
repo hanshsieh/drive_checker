@@ -5,9 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.SwingWorker;
 import java.io.File;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
@@ -28,15 +31,18 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     private final List<Future> checkerFutures = new ArrayList<>();
     private final File testFile;
     private final int iterationCount;
-    private final ControlPane controlPane;
+    private DrivesCheckListener listener;
+    private Instant startTime;
+    private Instant doneTime;
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public DrivesCheckWorker(
             @Nonnull List<DrivePane> drivePanes,
-            @Nonnull ControlPane controlPane) {
+            @Nonnull File testFile,
+            int iterationCount) {
         this.drivePanes = drivePanes;
-        this.testFile = controlPane.getTestFile();
-        this.iterationCount = controlPane.getIterationCount();
-        this.controlPane = controlPane;
+        this.testFile = testFile;
+        this.iterationCount = iterationCount;
         addPropertyChangeListener(event -> {
             String propName = event.getPropertyName();
             if (!"state".equals(propName)) {
@@ -45,20 +51,56 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
             StateValue state = (StateValue) event.getNewValue();
             if (state.equals(StateValue.STARTED)) {
                 onWorkerStarted();
-            } else if (state.equals(StateValue.DONE)) {
-                onWorkerDone();
             }
         });
+    }
+
+    public void setListener(@Nonnull DrivesCheckListener listener) {
+        this.listener = listener;
+    }
+
+    @Nonnull
+    public List<DriveChecker> getCheckers() {
+        return Collections.unmodifiableList(driveCheckers);
+    }
+
+    @Nullable
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    @Nullable
+    public Instant getDoneTime() {
+        return doneTime;
+    }
+
+    private void invokeListenerOnStart() {
+        if (listener != null) {
+            listener.onStart();
+        }
+    }
+
+    private void invokeListenerOnStop() {
+        if (listener != null) {
+            listener.onStop();
+        }
     }
 
     private void onWorkerStarted() {
         for (DrivePane drivePane : drivePanes) {
             drivePane.setCheckStatus(DrivePane.CheckStatus.RUNNING);
         }
-        controlPane.start();
+        startTime = Instant.now();
+        invokeListenerOnStart();
     }
 
-    private void onWorkerDone() {
+    /**
+     * Notice that when this swing worker is canceled, this method will be called immediately, even if
+     * the background thread is still running. Therefore, in this method we create another thread to wait for
+     * the background thread to finish.
+     */
+    @Override
+    protected void done() {
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
@@ -68,23 +110,28 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
                 }
                 synchronized (checkerFutures) {
                     for (Future future : checkerFutures) {
+
+                        // Notice that once we have called "cancel", calling "get" on the future just
+                        // directly get CancellationException.
                         future.cancel(true);
-                        future.get();
                     }
                 }
-                LOGGER.debug("All drive checkers have been canceled");
+                executor.shutdown();
+                executor.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
                 return null;
             }
 
             @Override
             protected void done() {
-                controlPane.stop();
+                doneTime = Instant.now();
+                invokeListenerOnStop();
             }
         }.execute();
 
     }
 
     private synchronized void init() {
+        driveCheckers.clear();
         for (DrivePane drivePane : drivePanes) {
             File drive = drivePane.getDrive();
             DriveChecker driveChecker = new DriveChecker(
@@ -96,9 +143,8 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
     @Override
     protected Void doInBackground() throws Exception {
-        init();
-        ExecutorService executor = Executors.newCachedThreadPool();
         try {
+            init();
             for (int i = 0; i < drivePanes.size(); ++i) {
                 synchronized (checkerFutures) {
                     if (isCancelled()) {
@@ -110,12 +156,11 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
                     checkerFutures.add(checkerFuture);
                 }
             }
+            return null;
         } finally {
             executor.shutdown();
             executor.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
-            publish(controlPane::stop);
         }
-        return null;
     }
 
     @Override
@@ -129,7 +174,6 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
         private final DriveChecker driveChecker;
         private final DrivePane drivePane;
-        private int iteration = 0;
 
         public Worker(@Nonnull DriveChecker driveChecker, @Nonnull DrivePane drivePane) {
             this.driveChecker = driveChecker;
@@ -139,29 +183,18 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
         @Override
         public void run() {
             File drive = drivePane.getDrive();
-            iteration = 0;
             LOGGER.info("Running check for drive {} for {} times", drive.getPath(), iterationCount);
             try {
-                while (hasMoreIteration()) {
-                    LOGGER.info("Running iteration {} for drive {}", iteration, drive.getPath());
-                    driveChecker.check();
-                }
+                driveChecker.check(iterationCount);
                 publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.SUCCESS));
                 LOGGER.info("Drive {} checking passed!", drive.getPath());
             } catch (InterruptedException | CancellationException ex) {
                 publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.CANCELED));
-                LOGGER.warn("Checking of drive {} is canceled", drive.getPath(), ex);
+                LOGGER.info("Checking of drive {} is canceled", drive.getPath(), ex);
             } catch (Exception ex) {
                 publish(() -> drivePane.setCheckStatus(DrivePane.CheckStatus.FAILED));
                 LOGGER.error("Fail to check drive {}", drive.getPath(), ex);
             }
-        }
-
-        private boolean hasMoreIteration() {
-            if (iterationCount <= 0) {
-                return true;
-            }
-            return iteration++ < iterationCount;
         }
     }
 }

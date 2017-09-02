@@ -40,7 +40,9 @@ public class DrivePane extends JPanel {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                checkBox.setSelected(!checkBox.isSelected());
+                if (checkBox.isEnabled()) {
+                    checkBox.setSelected(!checkBox.isSelected());
+                }
             }
         });
     }
@@ -73,6 +75,7 @@ public class DrivePane extends JPanel {
     }
 
     public void setCheckStatus(@Nonnull CheckStatus status) {
+        checkBox.setEnabled(true);
         switch (status) {
             case SUCCESS:
                 statusLabel.setText("Success");
@@ -85,6 +88,7 @@ public class DrivePane extends JPanel {
             case RUNNING:
                 statusLabel.setText("Running");
                 statusLabel.setForeground(Color.GRAY);
+                checkBox.setEnabled(false);
                 break;
             case CANCELED:
                 statusLabel.setText("Canceled");

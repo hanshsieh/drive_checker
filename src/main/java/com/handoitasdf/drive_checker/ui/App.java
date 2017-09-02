@@ -3,14 +3,12 @@ package com.handoitasdf.drive_checker.ui;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.FlowLayout;
-import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,14 +56,14 @@ public class App {
 
             @Override
             public void onPendingStop() {
-                cancelCheckDrives();
+                cancelDrivesChecking();
             }
         });
         frame.getContentPane().add(controlPane, BorderLayout.PAGE_START);
     }
 
     private void checkDrives() {
-        cancelCheckDrives();
+        cancelDrivesChecking();
         List<DrivePane> drivePanes = drivesPane.getDrives();
 
         for (DrivePane drivePane : drivePanes) {
@@ -84,11 +82,32 @@ public class App {
             return;
         }
 
-        drivesCheckWorker = new DrivesCheckWorker(selectedDrivePanes, controlPane);
+        drivesCheckWorker = new DrivesCheckWorker(
+                selectedDrivePanes,
+                controlPane.getTestFile(),
+                controlPane.getIterationCount());
+        drivesCheckWorker.setListener(new DrivesCheckListener() {
+            @Override
+            public void onStart() {
+                controlPane.start();
+            }
+
+            @Override
+            public void onStop() {
+                controlPane.stop();
+                showReportFrame();
+            }
+        });
         drivesCheckWorker.execute();
     }
 
-    private void cancelCheckDrives() {
+    private void showReportFrame() {
+        DriveCheckReportFrame reportFrame = new DriveCheckReportFrame();
+        reportFrame.setDriveCheckers(drivesCheckWorker);
+        reportFrame.setVisible(true);
+    }
+
+    private void cancelDrivesChecking() {
         if (drivesCheckWorker == null) {
             return;
         }

@@ -112,5 +112,6 @@ public class FileTransferrer {
         IOUtils.closeQuietly(outputStream);
         inputStream = null;
         outputStream = null;
+        buffer = null;
     }
 }
