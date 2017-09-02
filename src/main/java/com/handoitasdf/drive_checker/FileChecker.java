@@ -35,6 +35,7 @@ public class FileChecker {
 
     public boolean check(byte[] digest) throws IOException, InterruptedException, CancellationException {
         try {
+            LOGGER.debug("Checking digest of file {}", file.getPath());
             init();
             do {
                 if (canceled) {
