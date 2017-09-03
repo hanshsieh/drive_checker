@@ -2,7 +2,7 @@
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>target\drive_checker-0.1.5-jar-with-dependencies.jar</jar>
+  <jar>target\drive_checker-0.1.6-jar-with-dependencies.jar</jar>
   <outfile>.\drive_checker.exe</outfile>
   <errTitle></errTitle>
   <cmdLine></cmdLine>
