@@ -17,6 +17,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +31,12 @@ public class PropertiesProvider {
 
     private Properties properties = new Properties();
     private final File propertyFile;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final Properties propertiesToWrite = new Properties();
 
     public PropertiesProvider(@Nonnull File propertyFile) {
         this.propertyFile = propertyFile;
@@ -70,21 +79,21 @@ public class PropertiesProvider {
                         entry -> entry.getValue().toString()));
     }
 
-    private void storeProperties() {
-        new SwingWorker<Void, Void>() {
+    private synchronized void storeProperties() {
 
-            @Override
-            protected Void doInBackground() throws Exception {
-                LOGGER.debug("Storing properties to file {}", propertyFile.getPath());
-                try (FileOutputStream outputStream = new FileOutputStream(propertyFile)) {
-                    Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
-                    properties.store(writer, "Drive checker properties");
-                } catch (Exception ex) {
-                    LOGGER.error("Fail to store properties to file {}", propertyFile.getPath(), ex);
-                }
-                return null;
+        // Make a copy of the properties so that there won't be multiple thread
+        // access a same Properties instance.
+        propertiesToWrite.clear();
+        propertiesToWrite.putAll(properties);
+        executorService.execute(() -> {
+            LOGGER.debug("Storing properties to file {}", propertyFile.getPath());
+            try (FileOutputStream outputStream = new FileOutputStream(propertyFile)) {
+                Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+                propertiesToWrite.store(writer, "Drive checker properties");
+            } catch (Exception ex) {
+                LOGGER.error("Fail to store properties to file {}", propertyFile.getPath(), ex);
             }
-        }.execute();
+        });
 
     }
 }
