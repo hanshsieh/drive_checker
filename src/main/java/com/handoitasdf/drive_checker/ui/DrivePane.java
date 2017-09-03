@@ -4,6 +4,7 @@ import com.handoitasdf.drive_checker.CheckingStatus;
 import org.apache.commons.io.FileUtils;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -27,6 +28,7 @@ public class DrivePane extends JPanel {
     private JLabel iterationCountLabel = new JLabel();
     private JLabel copiedSizeLabel = new JLabel();
     private final File drive;
+    private DrivePaneListener listener;
 
     public DrivePane(@Nonnull File drive) {
         this.drive = drive;
@@ -46,12 +48,22 @@ public class DrivePane extends JPanel {
         });
     }
 
+    public void setListener(@Nullable DrivePaneListener listener) {
+        this.listener = listener;
+    }
+
     private void setupCheckBox() {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 0;
         constraints.ipady = CHECK_BOX_PAD_Y;
         constraints.anchor = GridBagConstraints.NORTH;
+        checkBox.addItemListener(e -> {
+            if (listener != null) {
+                listener.onSelectionChanged(checkBox.isSelected());
+            }
+        });
+
         add(checkBox, constraints);
     }
 
@@ -132,6 +144,10 @@ public class DrivePane extends JPanel {
 
     public boolean isSelected() {
         return checkBox.isSelected();
+    }
+
+    public void setSelected(boolean selected) {
+        checkBox.setSelected(selected);
     }
 
     @Nonnull

@@ -54,6 +54,19 @@ public class ControlPane extends JPanel {
         this.listener = listener;
     }
 
+    public void setTestFile(@Nonnull File testFile) {
+        String newPath = testFile.getAbsolutePath();
+        if (!testFilePathField.getText().equals(newPath)) {
+            testFilePathField.setText(newPath);
+        }
+    }
+
+    public void setTestCount(int newValue) {
+        if (!testCountSpinner.getValue().equals(newValue)) {
+            testCountSpinner.setValue(newValue);
+        }
+    }
+
     private void initTestFilePanel() {
         testFilePanel.setLayout(new GridBagLayout());
         initTestFileLabel();
@@ -92,6 +105,13 @@ public class ControlPane extends JPanel {
                         9999, //max
                         1);
         testCountSpinner.setModel(model);
+
+        testCountSpinner.addChangeListener(e ->{
+            if (listener != null) {
+                listener.onRepeatCountChanged((Integer) testCountSpinner.getValue());
+            }
+        });
+
         optionsPanel.add(testCountSpinner);
     }
 
@@ -210,7 +230,11 @@ public class ControlPane extends JPanel {
                 return;
             }
             File selectedFile = fileChooser.getSelectedFile();
+            String newFilePath = selectedFile.getAbsolutePath();
             testFilePathField.setText(selectedFile.getAbsolutePath());
+            if (listener != null) {
+                listener.onTestFileChanged(selectedFile);
+            }
         });
     }
 

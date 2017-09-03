@@ -9,4 +9,6 @@ import java.io.File;
 public interface ControlPaneListener {
     void onPendingStart();
     void onPendingStop();
+    void onTestFileChanged(@Nonnull File file);
+    void onRepeatCountChanged(int newValue);
 }

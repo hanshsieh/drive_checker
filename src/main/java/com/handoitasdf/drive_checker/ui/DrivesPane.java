@@ -1,10 +1,10 @@
 package com.handoitasdf.drive_checker.ui;
 
-import com.handoitasdf.drive_checker.CheckingStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.SwingWorker;
@@ -12,13 +12,12 @@ import javax.swing.filechooser.FileSystemView;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by icand on 2017/9/1.
@@ -29,10 +28,15 @@ public class DrivesPane extends JPanel {
     private final List<DrivePane> drivePanes = new ArrayList<>();
     private final JPanel drivesPanel = new JPanel();
     private final JButton refreshBtn = new JButton("Refresh");
+    private DrivesPaneListener listener;
 
     public DrivesPane() {
         initLayout();
         refresh();
+    }
+
+    public void setListener(@Nullable DrivesPaneListener listener) {
+        this.listener = listener;
     }
 
     public void refresh() {
@@ -46,6 +50,7 @@ public class DrivesPane extends JPanel {
 
                 synchronized (drivePanes) {
                     List<DrivePane> oldDrivePanes = new ArrayList<>(drivePanes);
+                    clearDrivePaneListeners();
                     drivePanes.clear();
                     for (File drive : drives) {
                         if (!fileSystemView.isDrive(drive)) {
@@ -57,6 +62,7 @@ public class DrivesPane extends JPanel {
                         }
                         DrivePane drivePane = createDrivePaneIfNotExists(drive, oldDrivePanes);
                         drivePanes.add(drivePane);
+                        drivePane.setListener(new ReportDrivePaneListener(drivePane));
                     }
                 }
                 return null;
@@ -75,9 +81,25 @@ public class DrivesPane extends JPanel {
 
     }
 
+    private void clearDrivePaneListeners() {
+        for (DrivePane drivePane : drivePanes) {
+            drivePane.setListener(null);
+        }
+    }
+
     @Nonnull
     public List<DrivePane> getDrives() {
         return Collections.unmodifiableList(drivePanes);
+    }
+
+    @Nonnull
+    public Optional<DrivePane> getDrivePane(@Nonnull File drive) {
+        for (DrivePane drivePane : drivePanes) {
+            if (drivePane.getDrive().equals(drive)) {
+                return Optional.of(drivePane);
+            }
+        }
+        return Optional.empty();
     }
 
     private void initLayout() {
@@ -132,5 +154,21 @@ public class DrivesPane extends JPanel {
             drivePane.setEnabled(enabled);
         }
         refreshBtn.setEnabled(enabled);
+    }
+
+    private class ReportDrivePaneListener implements DrivePaneListener {
+
+        private final DrivePane drivePane;
+
+        public ReportDrivePaneListener(@Nonnull DrivePane drivePane) {
+            this.drivePane = drivePane;
+        }
+
+        @Override
+        public void onSelectionChanged(boolean selected) {
+            if (listener != null) {
+                listener.onDriveSelectionChanged(drivePane.getDrive(), selected);
+            }
+        }
     }
 }

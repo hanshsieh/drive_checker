@@ -2,12 +2,10 @@ package com.handoitasdf.drive_checker.ui;
 
 import com.handoitasdf.drive_checker.CheckingStatus;
 import com.handoitasdf.drive_checker.DriveChecker;
-import com.handoitasdf.drive_checker.DriveCheckerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
@@ -18,21 +16,30 @@ import java.awt.Point;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * Application entry point.
  */
 public class App {
+    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
     private static final int DEFAULT_WIDTH = 800;
     private static final int DEFAULT_HEIGHT = 600;
-
+    private static final String PROP_TEST_COUNT = "test.repeat_count";
+    private static final String PROP_TEST_FILE_PATH = "test.input_file_path";
+    private static final String PROP_DRIVE_SELECTED_FORMAT = "drives.%s.selected";
+    private static final Pattern PROP_DRIVE_SELECTED_PATTERN = Pattern.compile("drives.([^.]*).selected");
+    private static final String PROPERTY_FILE_PATH = "user.properties";
     private final JFrame frame = new JFrame("Drive Checker");
     private final DrivesPane drivesPane = new DrivesPane();
     private final ControlPane controlPane = new ControlPane(frame.getContentPane());
     private DrivesCheckWorker drivesCheckWorker = null;
+    private final PropertiesProvider propertiesProvider;
 
     public App() {
+        propertiesProvider = new PropertiesProvider(new File(PROPERTY_FILE_PATH));
         initFrame();
     }
 
@@ -53,8 +60,31 @@ public class App {
         contentPane.setLayout(new BorderLayout());
 
         initControlPane();
+        initDrivesPane();
+    }
 
+    private void initDrivesPane() {
+
+        drivesPane.setListener((drive, selected) -> propertiesProvider.setProperty(
+                String.format(PROP_DRIVE_SELECTED_FORMAT, drive.getPath()),
+                String.valueOf(selected)));
+
+        initDrivesPaneProperties();
+
+        Container contentPane = frame.getContentPane();
         contentPane.add(drivesPane, BorderLayout.CENTER);
+    }
+
+    private void initDrivesPaneProperties() {
+        propertiesProvider.getProperties().forEach((propKey, value) -> {
+            Matcher matcher = PROP_DRIVE_SELECTED_PATTERN.matcher(propKey);
+            if (!matcher.matches()) {
+                return;
+            }
+            boolean selected = Boolean.parseBoolean(value);
+            String drive = matcher.group(1);
+            drivesPane.getDrivePane(new File(drive)).ifPresent(drivePane -> drivePane.setSelected(selected));
+        });
     }
 
     private void initControlPane() {
@@ -68,8 +98,26 @@ public class App {
             public void onPendingStop() {
                 cancelDrivesChecking();
             }
+
+            @Override
+            public void onTestFileChanged(@Nonnull File file) {
+                propertiesProvider.setProperty(PROP_TEST_FILE_PATH, file.getAbsolutePath());
+            }
+
+            @Override
+            public void onRepeatCountChanged(int newValue) {
+                propertiesProvider.setProperty(PROP_TEST_COUNT, String.valueOf(newValue));
+            }
         });
+        initControlPaneProperties();
         frame.getContentPane().add(controlPane, BorderLayout.PAGE_START);
+    }
+
+    private void initControlPaneProperties() {
+        propertiesProvider.getProperty(PROP_TEST_COUNT)
+                .ifPresent(prop -> controlPane.setTestCount(Integer.parseInt(prop)));
+        propertiesProvider.getProperty(PROP_TEST_FILE_PATH)
+                .ifPresent(prop -> controlPane.setTestFile(new File(prop)));
     }
 
     private void checkDrives() {
