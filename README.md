@@ -2,13 +2,10 @@
 
 ## Prepare Environment
 You need to download and install JRE (or JDK).
+Or, alternatively, you can prepare your own bundled JRE, put it in a directory "jre", and put the
+"jre" folder under the same directory as the exe.
 
 ## TODO
-- Generate report
-- Add loop
-- Generate log file
 - Allow auto generating random test file
-- Prevent overwriting output file
-- Remember last open file across execution
 - Refactoring
 - Beautify UI
