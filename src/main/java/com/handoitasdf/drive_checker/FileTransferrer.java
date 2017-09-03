@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -32,6 +33,7 @@ public class FileTransferrer {
     private int bufferSize;
     private int bufferOffset;
     private volatile boolean canceled = false;
+    private FileTransferrerListener listener;
     public FileTransferrer(@Nonnull File inputFile,
                            @Nonnull File outputFile,
                            @Nonnull MessageDigestProvider digestProvider) {
@@ -43,13 +45,13 @@ public class FileTransferrer {
     public void transfer() throws IOException, InterruptedException, CancellationException {
         try {
             initStreams();
-
             do {
                 if (canceled) {
                     throw new CancellationException("Transferring is canceled");
                 }
                 LOGGER.debug("Total number bytes to transferred: {}, number of bytes transferred: {}",
                         inputSize, inputPosition);
+                invokeListenerDataTransferred(inputPosition);
             } while (transferChunk());
 
         } finally {
@@ -64,6 +66,16 @@ public class FileTransferrer {
     @Nonnull
     public byte[] getDigest() {
         return digest;
+    }
+
+    public void setListener(@Nullable FileTransferrerListener listener) {
+        this.listener = listener;
+    }
+
+    private void invokeListenerDataTransferred(long nBytes) {
+        if (listener != null) {
+            listener.onDataTransferred(nBytes);
+        }
     }
 
     private boolean transferChunk() throws IOException {

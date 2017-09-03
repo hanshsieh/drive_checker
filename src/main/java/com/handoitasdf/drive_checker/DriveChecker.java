@@ -23,9 +23,10 @@ public class DriveChecker {
     private File outputFile;
     private Instant startTime;
     private Instant doneTime;
-    private int currIteration = 0;
+    private int finishedIteration = 0;
     private volatile CheckingStatus status = CheckingStatus.PENDING;
     private Exception failedReason;
+    private DriveCheckerListener listener;
     public DriveChecker(@Nonnull File drive, @Nonnull File testFile) {
         this.drive = drive;
         this.testFile = testFile;
@@ -46,8 +47,8 @@ public class DriveChecker {
                 if (!fileChecker.check(transferrer.getDigest())) {
                     throw new IOException("MD5 digest checking fails");
                 }
-                ++currIteration;
-                if (maxIterations > 0 && currIteration >= maxIterations) {
+                ++finishedIteration;
+                if (maxIterations > 0 && finishedIteration >= maxIterations) {
                     break;
                 }
             }
@@ -61,9 +62,20 @@ public class DriveChecker {
         }
     }
 
+    public void setListener(@Nullable DriveCheckerListener listener) {
+        this.listener = listener;
+    }
+
+    private void invokeDataCopiedListener(int iteration, long dataCopied) {
+        if (listener != null) {
+            listener.onDataCopied(iteration, dataCopied);
+        }
+    }
+
     private synchronized void setStatusUnlessCanceled(@Nonnull CheckingStatus newStatus) {
         if (CheckingStatus.CANCELED.equals(status)) {
-            throw new CancellationException("Checking is canceled");
+            throw new CancellationException(
+                    "Cannot set status to " + newStatus + " because checking is canceled");
         }
         this.status = newStatus;
     }
@@ -94,18 +106,21 @@ public class DriveChecker {
     }
 
     public int getCheckedCount() {
-        return currIteration;
+        return finishedIteration;
     }
 
     private synchronized void prepare() throws IOException {
         startTime = Instant.now();
         doneTime = null;
-        currIteration = 0;
+        finishedIteration = 0;
         outputFile = getTargetFile();
         LOGGER.debug("Output file: {}", outputFile.getPath());
         transferrer = new FileTransferrer(
                 testFile, outputFile, digestProvider);
         fileChecker = new FileChecker(outputFile, digestProvider);
+        transferrer.setListener(numBytes -> {
+            invokeDataCopiedListener(finishedIteration + 1, numBytes);
+        });
     }
 
     private synchronized void release() throws IOException {

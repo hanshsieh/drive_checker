@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DrivesCheckWorker.class);
-    private final static long WAIT_TIMEOUT = 1000 * 60;
 
     private final List<File> drives;
     private final List<DriveChecker> driveCheckers = new ArrayList<>();
@@ -54,6 +53,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
                 onWorkerStarted();
             }
         });
+        init();
     }
 
     public void setListener(@Nonnull DrivesCheckListener listener) {
@@ -121,7 +121,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
                     }
                 }
                 executor.shutdown();
-                executor.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
+                executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
                 return null;
             }
 
@@ -134,7 +134,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
 
     }
 
-    private synchronized void init() {
+    private void init() {
         driveCheckers.clear();
         for (File drive : drives) {
             DriveChecker driveChecker = new DriveChecker(
@@ -147,7 +147,6 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
     @Override
     protected Void doInBackground() throws Exception {
         try {
-            init();
             for (int i = 0; i < drives.size(); ++i) {
                 synchronized (checkerFutures) {
                     if (isCancelled()) {
@@ -162,7 +161,7 @@ public class DrivesCheckWorker extends SwingWorker<Void, Runnable> {
             return null;
         } finally {
             executor.shutdown();
-            executor.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
         }
     }
 

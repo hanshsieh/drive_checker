@@ -1,6 +1,7 @@
 package com.handoitasdf.drive_checker.ui;
 
 import com.handoitasdf.drive_checker.CheckingStatus;
+import org.apache.commons.io.FileUtils;
 
 import javax.annotation.Nonnull;
 import javax.swing.JCheckBox;
@@ -19,10 +20,12 @@ import java.io.File;
 public class DrivePane extends JPanel {
 
     // Put an arbitrary character so that the vertical space can be preserved.
-    private static final String DEFAULT_STATUS_TEXT = " ";
+    private static final String EMPTY_TEXT = " ";
     private static final int CHECK_BOX_PAD_Y = 10;
     private JCheckBox checkBox = new JCheckBox();
     private JLabel statusLabel = new JLabel();
+    private JLabel iterationCountLabel = new JLabel();
+    private JLabel copiedSizeLabel = new JLabel();
     private final File drive;
 
     public DrivePane(@Nonnull File drive) {
@@ -31,6 +34,8 @@ public class DrivePane extends JPanel {
         setupCheckBox();
         setupDriveLabel();
         setupStatusLabel();
+        setupCopiedSizeLabel();
+        setupIterationCountLabel();
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -59,13 +64,33 @@ public class DrivePane extends JPanel {
     }
 
     private void setupStatusLabel() {
-        statusLabel.setText(DEFAULT_STATUS_TEXT);
+        statusLabel.setText(EMPTY_TEXT);
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 1;
         constraints.gridwidth = 2;
         constraints.anchor = GridBagConstraints.CENTER;
         add(statusLabel, constraints);
+    }
+
+    private void setupIterationCountLabel() {
+        iterationCountLabel.setText(EMPTY_TEXT);
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = 2;
+        constraints.gridwidth = 2;
+        constraints.anchor = GridBagConstraints.CENTER;
+        add(iterationCountLabel, constraints);
+    }
+
+    private void setupCopiedSizeLabel() {
+        copiedSizeLabel.setText(EMPTY_TEXT);
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = 3;
+        constraints.gridwidth = 2;
+        constraints.anchor = GridBagConstraints.CENTER;
+        add(copiedSizeLabel, constraints);
     }
 
     public void setCheckStatus(@Nonnull CheckingStatus status) {
@@ -87,9 +112,17 @@ public class DrivePane extends JPanel {
                 statusLabel.setForeground(Color.GRAY);
                 break;
             default:
-                statusLabel.setText(DEFAULT_STATUS_TEXT);
+                statusLabel.setText(EMPTY_TEXT);
                 break;
         }
+    }
+
+    public void setCopiedSize(long bytes) {
+        copiedSizeLabel.setText(FileUtils.byteCountToDisplaySize(bytes));
+    }
+
+    public void setIterationCount(int iterationCount) {
+        iterationCountLabel.setText("round: " + iterationCount);
     }
 
     @Override

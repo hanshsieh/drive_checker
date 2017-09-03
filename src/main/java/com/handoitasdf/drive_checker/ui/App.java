@@ -1,10 +1,13 @@
 package com.handoitasdf.drive_checker.ui;
 
 import com.handoitasdf.drive_checker.CheckingStatus;
+import com.handoitasdf.drive_checker.DriveChecker;
+import com.handoitasdf.drive_checker.DriveCheckerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
@@ -14,6 +17,7 @@ import java.awt.FlowLayout;
 import java.awt.Point;
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -109,15 +113,29 @@ public class App {
 
             @Override
             public void onDriveStatusChanged(@Nonnull File drive, @Nonnull CheckingStatus checkStatus) {
-                for (DrivePane drivePane : drivePanes) {
-                    if (drivePane.getDrive().equals(drive)) {
-                        drivePane.setCheckStatus(checkStatus);
-                        break;
-                    }
-                }
+                getDrivePaneByDrive(drive).ifPresent(d -> d.setCheckStatus(checkStatus));
             }
         });
+        for (DriveChecker checker : drivesCheckWorker.getCheckers()) {
+            checker.setListener((iteration, copiedBytes) -> {
+                File drive = checker.getDrive();
+                getDrivePaneByDrive(drive).ifPresent(d -> {
+                    d.setCopiedSize(copiedBytes);
+                    d.setIterationCount(iteration);
+                });
+            });
+        }
         drivesCheckWorker.execute();
+    }
+
+    @Nonnull
+    private Optional<DrivePane> getDrivePaneByDrive(@Nonnull File drive) {
+        for (DrivePane drivePane : drivesPane.getDrives()) {
+            if (drivePane.getDrive().equals(drive)) {
+                return Optional.of(drivePane);
+            }
+        }
+        return Optional.empty();
     }
 
     private void showReportFrame() {
