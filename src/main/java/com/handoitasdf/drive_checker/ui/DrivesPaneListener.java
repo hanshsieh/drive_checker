@@ -8,4 +8,5 @@ import java.io.File;
  */
 public interface DrivesPaneListener {
     void onDriveSelectionChanged(@Nonnull File drive, boolean selected);
+    void onRefreshDone();
 }

@@ -32,7 +32,6 @@ public class DrivesPane extends JPanel {
 
     public DrivesPane() {
         initLayout();
-        refresh();
     }
 
     public void setListener(@Nullable DrivesPaneListener listener) {
@@ -41,9 +40,11 @@ public class DrivesPane extends JPanel {
 
     public void refresh() {
 
+        refreshBtn.setEnabled(false);
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
+                LOGGER.debug("Refreshing...");
                 File[] drives = File.listRoots();
 
                 FileSystemView fileSystemView = FileSystemView.getFileSystemView();
@@ -70,12 +71,17 @@ public class DrivesPane extends JPanel {
 
             @Override
             protected void done() {
+                LOGGER.debug("Refresh finished");
+                refreshBtn.setEnabled(true);
                 drivesPanel.removeAll();
                 for (DrivePane drivePane : drivePanes) {
                     drivesPanel.add(drivePane);
                 }
                 drivesPanel.revalidate();
                 drivesPanel.repaint();
+                if (listener != null) {
+                    listener.onRefreshDone();
+                }
             }
         }.execute();
 

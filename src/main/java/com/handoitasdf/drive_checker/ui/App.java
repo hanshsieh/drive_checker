@@ -41,6 +41,7 @@ public class App {
     public App() {
         propertiesProvider = new PropertiesProvider(new File(PROPERTY_FILE_PATH));
         initFrame();
+        drivesPane.refresh();
     }
 
     private void initFrame() {
@@ -65,17 +66,26 @@ public class App {
 
     private void initDrivesPane() {
 
-        drivesPane.setListener((drive, selected) -> propertiesProvider.setProperty(
-                String.format(PROP_DRIVE_SELECTED_FORMAT, drive.getPath()),
-                String.valueOf(selected)));
+        drivesPane.setListener(new DrivesPaneListener() {
+            @Override
+            public void onDriveSelectionChanged(@Nonnull File drive, boolean selected) {
+                propertiesProvider.setProperty(
+                        String.format(PROP_DRIVE_SELECTED_FORMAT, drive.getPath()),
+                        String.valueOf(selected));
+            }
 
-        initDrivesPaneProperties();
+            @Override
+            public void onRefreshDone() {
+                LOGGER.debug("DrivesPane refresh done");
+                refreshDrivesPaneProperties();
+            }
+        });
 
         Container contentPane = frame.getContentPane();
         contentPane.add(drivesPane, BorderLayout.CENTER);
     }
 
-    private void initDrivesPaneProperties() {
+    private void refreshDrivesPaneProperties() {
         propertiesProvider.getProperties().forEach((propKey, value) -> {
             Matcher matcher = PROP_DRIVE_SELECTED_PATTERN.matcher(propKey);
             if (!matcher.matches()) {
