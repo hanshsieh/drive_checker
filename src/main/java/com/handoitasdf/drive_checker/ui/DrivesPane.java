@@ -99,6 +99,16 @@ public class DrivesPane extends JPanel {
     }
 
     @Nonnull
+    public Optional<DrivePane> getDrivePaneByDrive(@Nonnull File drive) {
+        for (DrivePane drivePane : drivePanes) {
+            if (drivePane.getDrive().equals(drive)) {
+                return Optional.of(drivePane);
+            }
+        }
+        return Optional.empty();
+    }
+
+    @Nonnull
     public Optional<DrivePane> getDrivePane(@Nonnull File drive) {
         for (DrivePane drivePane : drivePanes) {
             if (drivePane.getDrive().equals(drive)) {

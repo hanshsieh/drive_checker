@@ -15,6 +15,9 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 
 /**
@@ -39,9 +42,11 @@ public class ControlPane extends JPanel {
     private final JSpinner testCountSpinner = new JSpinner();
     private final JPanel testFilePanel = new JPanel();
     private final JPanel optionsPanel = new JPanel();
+    private final JButton reportBtn = new JButton("Show report");
     private ControlPaneListener listener;
     private final Component parent;
     private Status status = Status.STOPPED;
+    private String report = "";
 
     public ControlPane(@Nonnull Component parent) {
         super(new GridBagLayout());
@@ -89,12 +94,26 @@ public class ControlPane extends JPanel {
         initTestCountSpinnerLabel();
         initTestCountSpinner();
         initTestCountTrainingLabel();
+        initReportButton();
+
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 1;
         constraints.weightx = 1.0;
         constraints.fill = GridBagConstraints.HORIZONTAL;
+
         add(optionsPanel, constraints);
+    }
+
+    private void initReportButton() {
+        reportBtn.setEnabled(false);
+        reportBtn.addActionListener(e -> {
+            DriveCheckReportFrame reportFrame = new DriveCheckReportFrame(report);
+            Point frameLocation = parent.getLocation();
+            reportFrame.setLocation(frameLocation.x + 20, frameLocation.y + 20);
+            reportFrame.setVisible(true);
+        });
+        optionsPanel.add(reportBtn);
     }
 
     private void initTestCountSpinner() {
@@ -166,6 +185,14 @@ public class ControlPane extends JPanel {
         return (Integer) testCountSpinner.getValue();
     }
 
+    public void setReport(@Nonnull String newReport) {
+        this.report = newReport;
+    }
+
+    public void setReportEnabled(boolean enabled) {
+        reportBtn.setEnabled(enabled);
+    }
+
     private void pendingToStart() {
         String path = testFilePathField.getText();
         if (path.isEmpty()) {
@@ -230,7 +257,6 @@ public class ControlPane extends JPanel {
                 return;
             }
             File selectedFile = fileChooser.getSelectedFile();
-            String newFilePath = selectedFile.getAbsolutePath();
             testFilePathField.setText(selectedFile.getAbsolutePath());
             if (listener != null) {
                 listener.onTestFileChanged(selectedFile);

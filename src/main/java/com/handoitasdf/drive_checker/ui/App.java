@@ -12,10 +12,11 @@ import javax.swing.WindowConstants;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.FlowLayout;
-import java.awt.Point;
 import java.io.File;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -34,9 +35,15 @@ public class App {
     private static final String PROPERTY_FILE_PATH = "user.properties";
     private final JFrame frame = new JFrame("Drive Checker");
     private final DrivesPane drivesPane = new DrivesPane();
-    private final ControlPane controlPane = new ControlPane(frame.getContentPane());
+    private final ControlPane controlPane = new ControlPane(frame);
+    private final TrailerPane trailerPane = new TrailerPane();
     private DrivesCheckWorker drivesCheckWorker = null;
     private final PropertiesProvider propertiesProvider;
+    private final ExecutorService executor = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public App() {
         propertiesProvider = new PropertiesProvider(new File(PROPERTY_FILE_PATH));
@@ -62,6 +69,12 @@ public class App {
 
         initControlPane();
         initDrivesPane();
+        initTrailerPane();
+    }
+
+    private void initTrailerPane() {
+        Container contentPane = frame.getContentPane();
+        contentPane.add(trailerPane, BorderLayout.PAGE_END);
     }
 
     private void initDrivesPane() {
@@ -155,53 +168,21 @@ public class App {
                 selectedDrives,
                 controlPane.getTestFile(),
                 controlPane.getIterationCount());
-        drivesCheckWorker.setListener(new DrivesCheckListener() {
-            @Override
-            public void onStart() {
-                controlPane.start();
-                drivesPane.setEnabled(false);
-            }
-
-            @Override
-            public void onStop() {
-                controlPane.stop();
-                drivesPane.setEnabled(true);
-                showReportFrame();
-            }
-
-            @Override
-            public void onDriveStatusChanged(@Nonnull File drive, @Nonnull CheckingStatus checkStatus) {
-                getDrivePaneByDrive(drive).ifPresent(d -> d.setCheckStatus(checkStatus));
-            }
-        });
+        drivesCheckWorker.setListener(new AppDrivesCheckListener(
+                controlPane,
+                drivesPane,
+                drivesCheckWorker,
+                executor));
         for (DriveChecker checker : drivesCheckWorker.getCheckers()) {
             checker.setListener((iteration, copiedBytes) -> {
                 File drive = checker.getDrive();
-                getDrivePaneByDrive(drive).ifPresent(d -> {
+                drivesPane.getDrivePaneByDrive(drive).ifPresent(d -> {
                     d.setCopiedSize(copiedBytes);
                     d.setIterationCount(iteration);
                 });
             });
         }
-        drivesCheckWorker.execute();
-    }
-
-    @Nonnull
-    private Optional<DrivePane> getDrivePaneByDrive(@Nonnull File drive) {
-        for (DrivePane drivePane : drivesPane.getDrives()) {
-            if (drivePane.getDrive().equals(drive)) {
-                return Optional.of(drivePane);
-            }
-        }
-        return Optional.empty();
-    }
-
-    private void showReportFrame() {
-        DriveCheckReportFrame reportFrame = new DriveCheckReportFrame();
-        reportFrame.setDriveCheckers(drivesCheckWorker);
-        Point frameLocation = frame.getLocation();
-        reportFrame.setLocation(frameLocation.x + 20, frameLocation.y + 20);
-        reportFrame.setVisible(true);
+        executor.execute(drivesCheckWorker);
     }
 
     private void cancelDrivesChecking() {
@@ -213,5 +194,47 @@ public class App {
 
     public static void main( String[] args ) throws Throwable {
         new App();
+    }
+
+    private static class AppDrivesCheckListener implements DrivesCheckListener {
+
+        private final ControlPane controlPane;
+        private final DrivesPane drivesPane;
+        private DrivesCheckWorker worker;
+        private final Executor executor;
+        private final DriveCheckReportGenerator reportGenerator = new DriveCheckReportGenerator();
+
+        public AppDrivesCheckListener(
+                @Nonnull ControlPane controlPane,
+                @Nonnull DrivesPane drivesPane,
+                @Nonnull DrivesCheckWorker worker,
+                @Nonnull Executor executor) {
+            this.controlPane = controlPane;
+            this.drivesPane = drivesPane;
+            this.worker = worker;
+            this.executor = executor;
+        }
+
+        @Override
+        public void onStart() {
+            controlPane.start();
+            drivesPane.setEnabled(false);
+            controlPane.setReportEnabled(false);
+        }
+
+        @Override
+        public void onStop() {
+            controlPane.stop();
+            drivesPane.setEnabled(true);
+            String report = reportGenerator.generateReport(worker);
+            executor.execute(new DriveCheckReportExporter(report));
+            controlPane.setReport(report);
+            controlPane.setReportEnabled(true);
+        }
+
+        @Override
+        public void onDriveStatusChanged(@Nonnull File drive, @Nonnull CheckingStatus checkStatus) {
+            drivesPane.getDrivePaneByDrive(drive).ifPresent(d -> d.setCheckStatus(checkStatus));
+        }
     }
 }
