@@ -25,11 +25,13 @@ public class DriveCheckReportGenerator {
         Validate.notNull(doneTime);
         builder.append("Start time: ")
                 .append(formatInstant(startTime))
-                .append("\nDone time: ")
+                .append(System.lineSeparator())
+                .append("Done time: ")
                 .append(formatInstant(doneTime))
-                .append("\nElapsed time: ")
+                .append(System.lineSeparator())
+                .append("Elapsed time: ")
                 .append(formatElapsedTime(startTime, doneTime))
-                .append('\n');
+                .append(System.lineSeparator());
         for (DriveChecker checker : drivesChecker.getCheckers()) {
             builder.append(generateDriveReport(checker));
         }
@@ -42,18 +44,23 @@ public class DriveCheckReportGenerator {
         Instant doneTime = driveChecker.getDoneTime();
         Validate.notNull(startTime);
         Validate.notNull(doneTime);
-        builder.append('\n')
+        builder.append(System.lineSeparator())
                 .append("# Drive ")
                 .append(driveChecker.getDrive().getPath())
-                .append("\nStart time: ")
+                .append(System.lineSeparator())
+                .append("Start time: ")
                 .append(formatInstant(startTime))
-                .append("\nDone time: ")
+                .append(System.lineSeparator())
+                .append("Done time: ")
                 .append(formatInstant(doneTime))
-                .append("\nElapsed time: ")
+                .append(System.lineSeparator())
+                .append("Elapsed time: ")
                 .append(formatElapsedTime(startTime, doneTime))
-                .append("\nSuccess count: ")
+                .append(System.lineSeparator())
+                .append("Success count: ")
                 .append(driveChecker.getCheckedCount())
-                .append("\nResult: ");
+                .append(System.lineSeparator())
+                .append("Result: ");
         switch (driveChecker.getStatus()) {
             case SUCCESS:
                 builder.append("Success");
@@ -67,7 +74,7 @@ public class DriveCheckReportGenerator {
                         .append(')');
                 break;
         }
-        builder.append('\n');
+        builder.append(System.lineSeparator());
         return builder.toString();
     }
 

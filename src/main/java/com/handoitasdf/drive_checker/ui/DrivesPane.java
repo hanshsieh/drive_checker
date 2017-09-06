@@ -94,7 +94,7 @@ public class DrivesPane extends JPanel {
     }
 
     @Nonnull
-    public List<DrivePane> getDrives() {
+    public List<DrivePane> getDrivePanes() {
         return Collections.unmodifiableList(drivePanes);
     }
 

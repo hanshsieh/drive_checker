@@ -86,7 +86,7 @@ public class DrivePane extends JPanel {
     }
 
     private void setupIterationCountLabel() {
-        iterationCountLabel.setText(EMPTY_TEXT);
+        clearIterationCount();
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 2;
@@ -96,7 +96,7 @@ public class DrivePane extends JPanel {
     }
 
     private void setupCopiedSizeLabel() {
-        copiedSizeLabel.setText(EMPTY_TEXT);
+        clearCopiedSize();
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 3;
@@ -133,8 +133,16 @@ public class DrivePane extends JPanel {
         copiedSizeLabel.setText(FileUtils.byteCountToDisplaySize(bytes));
     }
 
+    public void clearCopiedSize() {
+        copiedSizeLabel.setText(EMPTY_TEXT);
+    }
+
     public void setIterationCount(int iterationCount) {
         iterationCountLabel.setText("round: " + iterationCount);
+    }
+
+    public void clearIterationCount() {
+        iterationCountLabel.setText(EMPTY_TEXT);
     }
 
     @Override
